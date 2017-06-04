@@ -25,7 +25,7 @@ const styles = {
     },
 };
 
-const artistsUrl = 'https://webcanva.herokuapp.com/canvas/api/v1/artists/'
+const artistsUrl = 'http://webcanva.herokuapp.com/canvas/api/v1/artists/'
 
 class LoginForm extends React.Component{
     constructor(props){

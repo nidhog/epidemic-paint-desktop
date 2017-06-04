@@ -11,15 +11,37 @@ class MainView extends React.Component{
 
     constructor(props) {
         super(props);
+        this.state = {
+            sessionName: 'Untitled'
+        }
     }
 
+    renameSessionName(name, ignoreNullString=false){
+        if(!ignoreNullString){
+            if(name !== null && name !== 'null' ){
+                this.setState({ sessionName: name})
+            }
+        }
+        else{
+            if(name !== null){
+                this.setState({ sessionName: name})
+            }
+        }
+    }
 
+    componentWillMount(){
+        this.renameSessionName(this.props.sessionName);
+    }
     render() {
-
+        console.log(this.props.artistID);
+        console.log(this.props.sessionID);
         return (
             <Card>
-                <Subheader>Session: <b>{this.props.sessionName}</b></Subheader>
-                <DrawingCanvas width={this.props.width} height={this.props.height} />
+                <Subheader>Session Name: <b>{this.state.sessionName}</b></Subheader>
+                <DrawingCanvas width={this.props.width} height={this.props.height}
+                                artistID = {this.props.artistID}
+                                sessionID = {this.props.sessionID}
+                />
                 <Toolbar />
             </Card>);
     }

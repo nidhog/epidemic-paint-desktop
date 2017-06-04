@@ -16,11 +16,16 @@ class Epidemic extends React.Component{
 
     render() {
         const { search } = this.props.location;
+        console.log(search)
         const sessionName = getParams('sessionName', search);
+        const sessionID = getParams('sessionID', search);
         const artistID = getParams('artistID', search);
         return (
-            <MainView width={ defaultSettings.width } height={ defaultSettings.height }
-                      sessionName = {sessionName} artistID={artistID}>
+            <MainView width={ defaultSettings.width }
+                      height={ defaultSettings.height }
+                      sessionName = {sessionName}
+                      sessionID = {sessionID}
+                      artistID={artistID}>
             </MainView>);
     }
 };

@@ -7,7 +7,8 @@ import Subheader from 'material-ui/Subheader';
 
 import FlatButton from 'material-ui/FlatButton';
 import RaisedButton from 'material-ui/RaisedButton';
-import DragIcon from 'material-ui/svg-icons/editor/drag-handle'
+import DragIcon from 'material-ui/svg-icons/editor/drag-handle';
+import BackArrowIcon from 'material-ui/svg-icons/hardware/keyboard-arrow-left';
 
 import browserHistory from '../routes/history';
 import getParams from '../utils/parsing'
@@ -28,7 +29,7 @@ const styles = {
     },
 };
 
-const sessionUrl = 'https://webcanva.herokuapp.com/canvas/api/v1/sessions/'
+const sessionUrl = 'http://webcanva.herokuapp.com/canvas/api/v1/sessions/'
 
 class NewSession extends React.Component{
     constructor(props){
@@ -54,19 +55,23 @@ class NewSession extends React.Component{
                     artist: artistID,
                 })
             }).then( (json) => {
-                if(json.status == 200 || json.status == 201 ){
-                    browserHistory.push('epidemic/'+
-                        '?sessionName='+this.state.name+
-                        '&artistID='+artistID);
+            if(json.status == 200 || json.status == 201 ){
+                return json.json();
 
-                }
-                else{
-                    browserHistory.push('new');
-                };
+            }
+            else{
+                browserHistory.push('new');
+            };
 
-            }).then(
-            (response) => {console.log('responding'); console.log(response)}
-        ).catch( (ex) => {
+        }).then( (json) => {
+            console.log(json)
+            browserHistory.push('epidemic/' +
+                '?sessionName=' + this.state.name +
+                '&sessionID=' + json.id +
+                '&artistID=' + artistID);
+
+
+        }).catch( (ex) => {
                 console.log('parsing failed', ex)
             })
     }
@@ -81,7 +86,12 @@ class NewSession extends React.Component{
         const artistID = getParams('artistID', search);
         browserHistory.push('epidemic/'+
             '?sessionName='+this.state.name+
+            '&sessionID=3' +
             '&artistID='+artistID);
+    }
+
+    goBack(){
+        browserHistory.push('/');
     }
 
     updateName(event, name){
@@ -105,6 +115,8 @@ class NewSession extends React.Component{
                     </FlatButton>
                 </CardActions>
                 <CardActions>
+                    <RaisedButton label="Go Back" style={styles.outerButton}  onClick={this.goBack.bind(this)} icon={<BackArrowIcon />}>
+                    </RaisedButton>
                     <RaisedButton label="View Existing Sessions" style={styles.outerButton}  onClick={this.offlineSession.bind(this)} icon={<DragIcon />}>
                     </RaisedButton>
                 </CardActions>

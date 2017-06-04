@@ -1,3 +1,3 @@
 import { createHashHistory } from 'history';
-let browserHistory = createHashHistory();
+var browserHistory = createHashHistory();
 export default browserHistory;
