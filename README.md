@@ -1,6 +1,8 @@
-# electron-react-tutorial
+# Epidemic Paint
 
-This project is a learning resource designed to show how Electron, React, and webpack can work together.
+Desktop application built using Electron, React, and webpack.
+
+Backend is present in: https://github.com/nidhog/webcanvas
 
 ### Instructions
 
