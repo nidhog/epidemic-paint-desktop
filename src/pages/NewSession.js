@@ -86,8 +86,16 @@ class NewSession extends React.Component{
         const artistID = getParams('artistID', search);
         browserHistory.push('epidemic/'+
             '?sessionName='+this.state.name+
-            '&sessionID=3' +
+            '&sessionID=12' +
             '&artistID='+artistID);
+    }
+
+
+    allSessions(){
+        const { search } = this.props.location;
+        const artistID = getParams('artistID', search);
+        browserHistory.push('all/'+
+            '?artistID='+artistID);
     }
 
     goBack(){
@@ -117,7 +125,7 @@ class NewSession extends React.Component{
                 <CardActions>
                     <RaisedButton label="Go Back" style={styles.outerButton}  onClick={this.goBack.bind(this)} icon={<BackArrowIcon />}>
                     </RaisedButton>
-                    <RaisedButton label="View Existing Sessions" style={styles.outerButton}  onClick={this.offlineSession.bind(this)} icon={<DragIcon />}>
+                    <RaisedButton label="View Existing Sessions" style={styles.outerButton}  onClick={this.allSessions.bind(this)} icon={<DragIcon />}>
                     </RaisedButton>
                 </CardActions>
             </Card>

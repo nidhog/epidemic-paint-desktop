@@ -50,6 +50,8 @@ const styles = {
 };
 
 const api_urls = {
+    actionsUrl : 'http://webcanva.herokuapp.com/canvas/api/v1/actions/',
+    actionSetUrl : 'http://webcanva.herokuapp.com/canvas/api/v1/get_actions',
     updateUrl: function (sessionID) {
         return 'http://webcanva.herokuapp.com/canvas/api/v1/sessions/'+
             sessionID+
@@ -63,6 +65,7 @@ const api_urls = {
 
 class DrawingCanvas extends React.Component{
     propTypes:{
+        //noinspection JSAnnotator
         width: React.PropTypes.integer.isRequired,
         height: React.PropTypes.integer.isRequired
     }
@@ -78,8 +81,14 @@ class DrawingCanvas extends React.Component{
         this.drawingPast= new Array();
         this.drawingFuture= new Array();
         this.currentDrawing = null;
+        this.counter = 0;
+
 
         this.state = {
+            initialContext: null,
+            mounted: false,
+            toExecute: null,
+            lastCreatedAction: '',
             drawingPast: new Array,
             drawingFuture: new Array,
             cursorSizeIndex: this.sizeToIndex(this.size),
@@ -107,6 +116,7 @@ class DrawingCanvas extends React.Component{
 
     initializeCanvasContext(canvas) {
         this.context = canvas.getContext('2d');
+        this.setState({initialContext: this.context})
     }
 
     initializeCanvasDetails(canvas){
@@ -116,6 +126,8 @@ class DrawingCanvas extends React.Component{
 
     componentDidMount(){
         this.initializeCanvasDetails(this.refs.canvas);
+        this.setState({mounted: true})
+        this._refreshSession();
     }
 
     // Handle Image Upload
@@ -165,7 +177,6 @@ class DrawingCanvas extends React.Component{
 
     // Handle Drawing Strokes
     onDraw(e){
-        console.log('DRAWING DONE')
 
         if(this.context.canvas == null){
             this.componentDidMount();
@@ -181,7 +192,6 @@ class DrawingCanvas extends React.Component{
     }
 
     endDrawing(){
-        console.log('END and push')
         this.stroke = null;
         // TODO add to history
         // push past
@@ -198,7 +208,7 @@ class DrawingCanvas extends React.Component{
     }
 
     draw(start, end, stroke) {
-        let context = this.context;
+        let context = this.state.initialContext;
         context.lineJoin = 'round';
         context.linePath = 'round';
         context.lineWidth = stroke.size;
@@ -214,12 +224,12 @@ class DrawingCanvas extends React.Component{
         if (this.isOkDrawing()) {
             let {x, y} = this.getMousePosition(e);
             this.draw(this.startPoint, {x, y}, this.stroke);
+            this._storeAction(this.startPoint, {x, y}, 'line');
             this.startPoint = {x, y};
         }
     }
 
     onMouseDown(e){
-        console.log('DOWN');
         let {x, y} = this.getMousePosition(e);
 
         this.beginDrawing({
@@ -227,18 +237,18 @@ class DrawingCanvas extends React.Component{
             size: this.size
         });
         this.startPoint = {x, y};
+        this._refreshSession();
     }
 
     onMouseUp(e){
-        console.log('UP');
         this.endDrawing();
+        this._refreshSession();
 
 
     }
 
     onMouseMove(e){
         if (this.mouseIsOut) {
-            console.log('OUTMOVE')
             // check if left button held
             if (e.buttons == 1) {
                 this.startPoint = this.getMousePosition(e);
@@ -250,19 +260,51 @@ class DrawingCanvas extends React.Component{
             this.mouseIsOut = false;
         }
         this.trackMouseMovement(e);
+        this.counter++;
     }
 
+    executeBufferedActions(){
+        const stroke = {color: this.color, size: this.size};
+        const currentBuffer = this.state.toExecute;
+        if(currentBuffer!==null){
+            const bufferLength = currentBuffer.length;
+            for(var i = 0; i<bufferLength; i++){
+                var currentAction = currentBuffer[i];
+                switch(currentAction.type) {
+                    case 'line':
+                        this.draw(
+                            {x: currentAction.startX, y: currentAction.startY},
+                            {x:currentAction.endX, y:currentAction.endY},
+                            {color: currentAction.color, size: currentAction.size}
+                        );
+                        this.addPast();
+                    case 'undo':
+                        break;
+                    case 'redo':
+                        break;
+                    default:
+                        break;
+                }
+
+
+            }
+        }
+    }
     onMouseEnter(e){
-        console.log('ENTER');
         this.startPoint = this.getMousePosition(e);
+        this._refreshSession();
+    }
+
+    _refreshSession(){
+        this._getActionSet();
+        this.executeBufferedActions();
     }
 
     onMouseOut(e){
-        console.log('OUT');
         this.mouseIsOut = true;
         this.trackMouseMovement(e);
+        this._refreshSession();
 
-        this._refreshImage();
 
     }
 
@@ -320,7 +362,6 @@ class DrawingCanvas extends React.Component{
     }
     // Handle Undo Redo History
     onUndo(e){
-        console.log('UNDO');
         if(this.drawingPast.length>0){
             this.changeDrawingStateBackward();
         }
@@ -330,7 +371,6 @@ class DrawingCanvas extends React.Component{
 
     }
     onRedo(e){
-        console.log('REDO');
         if(this.drawingFuture.length>0){
             this.changeDrawingStateForward();
         }
@@ -351,8 +391,106 @@ class DrawingCanvas extends React.Component{
         }
         var currentDrawing = document.getElementById('drawing-canvas').toDataURL()
         this.currentDrawing = currentDrawing;
-        if(!this.mouseIsOut){
-            this._updateImage(currentDrawing);
+    }
+
+
+    _getActionSet(type='line'){
+        const sessionID = this.props.sessionID;
+        const actionSetUrl = api_urls.actionSetUrl;
+        const artistID = this.props.artistID;
+        const lastCreated = this.state.lastCreatedAction;
+
+        if(sessionID !== null && sessionID !== 'null' && artistID!== null && artistID !== 'null'){
+            fetch(
+                actionSetUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        type: type,
+                        last_created: lastCreated,
+                        session: sessionID,
+                        artist: artistID,
+                    })
+                }).then( (json) => {
+                if(json.status == 200 || json.status == 201 ){
+                    return json.json();
+                }
+                else{
+                    console.log('failed to get actions')
+                };
+
+            }).then( (json) => {
+                var actionArray = json.result;
+                var newCreatedDate = actionArray[actionArray.length-1].created;
+                this.setState({
+                    toExecute: actionArray,
+                    lastCreatedAction: newCreatedDate,
+                })
+            }).catch( (ex) => {
+                console.log('get actions failed', ex)
+            })
+        }else{
+            console.log('no update offline mode')
+        }
+    }
+
+    _storeAction(startPos, endPos, type='line', updateActionDate=true){
+        const sessionID = this.props.sessionID;
+        const actionUrl = api_urls.actionsUrl;
+        const artistID = this.props.artistID;
+        const startX = startPos.x
+        const startY = startPos.y;
+        const endX = endPos.x;
+        const endY = endPos.y;
+        var color = this.stroke.color;
+        var size = this.stroke.size;
+
+        if(this.stroke!==null){
+            color = this.stroke.color;
+            size = this.stroke.size;
+        }
+
+        if(sessionID !== null && sessionID !== 'null' && artistID!== null && artistID!=='null'){
+            fetch(
+                actionUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        type: type,
+                        session: sessionID,
+                        artist: artistID,
+                        startX: startX,
+                        startY: startY,
+                        endX: endX,
+                        endY: endY,
+                        color: color,
+                        size: size,
+                    })
+                }).then( (json) => {
+                if(json.status == 200 || json.status == 201 ){
+                    return json.json();
+
+
+                }
+                else{
+                    console.log('update status failed')
+                };
+
+            }).then( (json) => {
+                this.setState({
+                    lastCreatedAction: json.created,
+                })
+            }).catch( (ex) => {
+                console.log('update failed', ex)
+            })
+        }else{
+            console.log('no update offline mode')
         }
     }
 
@@ -361,10 +499,6 @@ class DrawingCanvas extends React.Component{
         const sessionID = this.props.sessionID;
         const updateUrl = api_urls.updateUrl(sessionID);
         const artistID = this.props.artistID;
-        console.log('HERE')
-        console.log(artistID)
-        console.log(sessionID)
-        console.log(updateUrl)
         if(sessionID !== null){
             fetch(
                 updateUrl, {
@@ -410,15 +544,10 @@ class DrawingCanvas extends React.Component{
     }
 
     _refreshImage(){
-        console.log('refresh')
         const sessionID = this.props.sessionID;
         if(sessionID !== null){
             const refreshUrl = api_urls.refreshUrl(sessionID);
             const artistID = this.props.artistID;
-            console.log('HERE')
-            console.log(artistID)
-            console.log(sessionID)
-            console.log(refreshUrl)
             fetch(
                 refreshUrl, {
                     method: 'GET',
@@ -435,8 +564,6 @@ class DrawingCanvas extends React.Component{
                 };
 
             }).then( (json) => {
-                console.log('woop woop')
-                console.log(json)
                 var imageSrc = this.context.canvas.toDataURL(json.image);
                 this.refreshImageFromResponse(imageSrc);
             }).catch( (ex) => {
@@ -445,6 +572,7 @@ class DrawingCanvas extends React.Component{
         }else{
             console.log('no update offline mode')
         }
+
     }
     render() {
         let {imageUrl} = this.state.backgroundImage;
@@ -536,7 +664,7 @@ class DrawingCanvas extends React.Component{
                     containerElement="label"
                     icon={<PhotoIcon />}
                 >
-                    <input type="file" style={styles.innerAction} onChange={(e)=>this._handleImageInsert(e)} />
+                    <input type="file" style={styles.innerAction} onChange={(e)=>this._handleImageInsert(e)} draggable="true"/>
                 </FlatButton>
 
 

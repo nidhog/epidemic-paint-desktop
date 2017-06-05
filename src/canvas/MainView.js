@@ -33,8 +33,6 @@ class MainView extends React.Component{
         this.renameSessionName(this.props.sessionName);
     }
     render() {
-        console.log(this.props.artistID);
-        console.log(this.props.sessionID);
         return (
             <Card>
                 <Subheader>Session Name: <b>{this.state.sessionName}</b></Subheader>
