@@ -26,7 +26,7 @@ const styles = {
     },
 };
 
-const sessionUrl = 'http://webcanva.herokuapp.com/canvas/api/v1/sessions/'
+const sessionUrl = 'https://webcanva.herokuapp.com/canvas/api/v1/sessions/'
 
 class AllSessions extends React.Component{
     constructor(props){

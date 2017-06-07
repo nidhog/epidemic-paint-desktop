@@ -81,10 +81,10 @@ class DrawingCanvas extends React.Component{
         this.drawingPast= new Array();
         this.drawingFuture= new Array();
         this.currentDrawing = null;
-        this.counter = 0;
 
 
         this.state = {
+            pending: false,
             initialContext: null,
             mounted: false,
             toExecute: null,
@@ -126,8 +126,8 @@ class DrawingCanvas extends React.Component{
 
     componentDidMount(){
         this.initializeCanvasDetails(this.refs.canvas);
-        this.setState({mounted: true})
-        this._refreshSession();
+        this.setState({mounted: true});
+        this.addPast();
     }
 
     // Handle Image Upload
@@ -163,7 +163,7 @@ class DrawingCanvas extends React.Component{
         }
         reader.readAsDataURL(file);
 
-        //this.addPast();
+        this.addPast();
     }
 
     // Handle Refreshing The Page
@@ -237,13 +237,10 @@ class DrawingCanvas extends React.Component{
             size: this.size
         });
         this.startPoint = {x, y};
-        this._refreshSession();
     }
 
     onMouseUp(e){
         this.endDrawing();
-        this._refreshSession();
-
 
     }
 
@@ -260,13 +257,12 @@ class DrawingCanvas extends React.Component{
             this.mouseIsOut = false;
         }
         this.trackMouseMovement(e);
-        this.counter++;
+        this._refreshSession();
     }
 
     executeBufferedActions(){
-        const stroke = {color: this.color, size: this.size};
         const currentBuffer = this.state.toExecute;
-        if(currentBuffer!==null){
+        if(!this.state.executing && currentBuffer!==null && currentBuffer.length>1){
             const bufferLength = currentBuffer.length;
             for(var i = 0; i<bufferLength; i++){
                 var currentAction = currentBuffer[i];
@@ -277,7 +273,6 @@ class DrawingCanvas extends React.Component{
                             {x:currentAction.endX, y:currentAction.endY},
                             {color: currentAction.color, size: currentAction.size}
                         );
-                        this.addPast();
                     case 'undo':
                         break;
                     case 'redo':
@@ -292,18 +287,18 @@ class DrawingCanvas extends React.Component{
     }
     onMouseEnter(e){
         this.startPoint = this.getMousePosition(e);
-        this._refreshSession();
     }
 
     _refreshSession(){
-        this._getActionSet();
-        this.executeBufferedActions();
+        if(!this.state.pending){
+            this._getActionSet();
+            this.executeBufferedActions();
+        }
     }
 
     onMouseOut(e){
         this.mouseIsOut = true;
         this.trackMouseMovement(e);
-        this._refreshSession();
 
 
     }
@@ -335,44 +330,51 @@ class DrawingCanvas extends React.Component{
         this.color = color;
     }
 
-    changeDrawingStateBackward(){
-        let pastDrawing = this.drawingPast.pop();
+    goBckDrawing(){
+        const pastDrawing = this.drawingPast.pop();
         this.drawingFuture.unshift(this.currentDrawing);
+        this.currentDrawing = pastDrawing;
         // draw current
         var image = new Image();
-
         image.src = pastDrawing;
         this.clearCanvas();
         this.context.drawImage(image, 0, 0);
-        this.currentDrawing = pastDrawing;
+        console.log('PS')
+        console.log(pastDrawing)
     }
 
 
-    changeDrawingStateForward(){
-        let futureDrawing = this.drawingFuture.shift();
+    goFwdDrawing(){
+        const futureDrawing = this.drawingFuture.shift();
         this.drawingPast.push(this.currentDrawing);
+        this.currentDrawing = futureDrawing;
 
         // draw current
         var image = new Image();
         image.src = futureDrawing;
         this.clearCanvas();
         this.context.drawImage(image, 0, 0);
+        console.log('FUT')
+        console.log(futureDrawing)
 
-        this.currentDrawing = futureDrawing;
     }
+
     // Handle Undo Redo History
     onUndo(e){
         if(this.drawingPast.length>0){
-            this.changeDrawingStateBackward();
+            this.goBckDrawing();
         }
         else{
-            this.clearCanvas();
+            console.log('No past drawing');
         }
 
     }
     onRedo(e){
         if(this.drawingFuture.length>0){
-            this.changeDrawingStateForward();
+            this.goFwdDrawing();
+        }
+        else{
+            console.log('No future drawing');
         }
 
     }
@@ -384,13 +386,17 @@ class DrawingCanvas extends React.Component{
         }
     }
 
+    updateCurrentDrawing(){
+        var currentDrawing = document.getElementById('drawing-canvas').toDataURL()
+        this.currentDrawing = currentDrawing;
+    }
+
     addPast(){
         if(this.currentDrawing !== null){
             this.drawingPast.push(this.currentDrawing);
             this.drawingFuture = new Array();
         }
-        var currentDrawing = document.getElementById('drawing-canvas').toDataURL()
-        this.currentDrawing = currentDrawing;
+        this.updateCurrentDrawing();
     }
 
 
@@ -400,7 +406,9 @@ class DrawingCanvas extends React.Component{
         const artistID = this.props.artistID;
         const lastCreated = this.state.lastCreatedAction;
 
+
         if(sessionID !== null && sessionID !== 'null' && artistID!== null && artistID !== 'null'){
+            this.setState({pending:true});
             fetch(
                 actionSetUrl, {
                     method: 'POST',
@@ -428,12 +436,11 @@ class DrawingCanvas extends React.Component{
                 this.setState({
                     toExecute: actionArray,
                     lastCreatedAction: newCreatedDate,
+                    pending:false,
                 })
             }).catch( (ex) => {
                 console.log('get actions failed', ex)
             })
-        }else{
-            console.log('no update offline mode')
         }
     }
 

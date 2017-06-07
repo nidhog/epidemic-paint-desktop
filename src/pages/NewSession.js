@@ -29,7 +29,7 @@ const styles = {
     },
 };
 
-const sessionUrl = 'http://webcanva.herokuapp.com/canvas/api/v1/sessions/'
+const sessionUrl = 'https://webcanva.herokuapp.com/canvas/api/v1/sessions/'
 
 class NewSession extends React.Component{
     constructor(props){
@@ -42,6 +42,12 @@ class NewSession extends React.Component{
     _addSession(){
         const { search } = this.props.location;
         const artistID = getParams('artistID', search);
+
+
+        console.log({
+            name: this.state.name,
+            artist: artistID,
+        })
 
         fetch(
             sessionUrl, {
@@ -81,15 +87,6 @@ class NewSession extends React.Component{
         this._addSession();
     }
 
-    offlineSession(){
-        const { search } = this.props.location;
-        const artistID = getParams('artistID', search);
-        browserHistory.push('epidemic/'+
-            '?sessionName='+this.state.name+
-            '&sessionID=12' +
-            '&artistID='+artistID);
-    }
-
 
     allSessions(){
         const { search } = this.props.location;
@@ -118,8 +115,6 @@ class NewSession extends React.Component{
                            onChange={ this.updateName.bind(this)} /><br/>
                 <CardActions>
                     <FlatButton label="New Session" style={styles.outerButton}  onClick={this._newSession.bind(this)}>
-                    </FlatButton>
-                    <FlatButton label="Offline Mode" style={styles.outerButton}  onClick={this.offlineSession.bind(this)}>
                     </FlatButton>
                 </CardActions>
                 <CardActions>
