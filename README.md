@@ -8,8 +8,11 @@ Backend is present in: https://github.com/nidhog/webcanvas
 
 ```bash
 npm install
-npm run-script watch
 
-# open a new terminal
 npm start
+```
+
+To run the webpack server only :
+```
+npm run watch
 ```
