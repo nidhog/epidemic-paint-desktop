@@ -15,4 +15,5 @@ npm start
 To run the webpack server only :
 ```
 npm run watch
+# will be served on localhost:8080
 ```
